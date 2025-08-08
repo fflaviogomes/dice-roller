@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RPG Dice Roller</title>
+  <meta name="description" content="Pretty, animated RPG dice roller — no installs needed" />
+  <style>
+    :root {
+      --bg1: #0f172a; /* slate-900 */
+      --bg2: #1e1b4b; /* indigo-950-ish */
+      --bg3: #4c1d95; /* purple-900 */
+      --card: rgba(255,255,255,0.08);
+      --card-border: rgba(255,255,255,0.15);
+      --text: #e5e7eb;
+      --muted: #cbd5e1;
+      --accent: #a78bfa; /* violet-400 */
+      --good: #34d399; /* emerald-400 */
+      --bad: #fb7185; /* rose-400 */
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text);
+      background: radial-gradient(1200px 500px at 50% -10%, rgba(255,255,255,0.08), transparent),
+                  linear-gradient(135deg, var(--bg1), var(--bg2) 50%, var(--bg3));
+      min-height: 100vh;
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .badge { background: var(--card); border: 1px solid var(--card-border); padding: 8px; border-radius: 16px; }
+    h1 { margin: 0; font-size: 28px; }
+
+    .grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 24px; }
+    @media (min-width: 900px) { .grid { grid-template-columns: 1fr 2fr; } }
+
+    .card { background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
+    .card h2 { margin: 0; font-size: 16px; padding: 16px; }
+    .card .content { padding: 16px; }
+
+    .dice-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .die-picker { border: 1px solid var(--card-border); border-radius: 14px; background: rgba(255,255,255,0.06); padding: 12px; }
+    .die-picker .row { display: flex; align-items: center; justify-content: space-between; }
+    .die-picker .name { font-weight: 700; }
+    .die-picker .sides { opacity: 0.7; font-size: 12px; }
+    .die-picker .controls { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+
+    .btn { cursor: pointer; border: 1px solid var(--card-border); background: rgba(255,255,255,0.1); color: var(--text); border-radius: 10px; padding: 8px 10px; font-weight: 600; }
+    .btn:hover { background: rgba(255,255,255,0.18); }
+    .btn.icon { width: 36px; height: 36px; display: grid; place-items: center; }
+    .btn.ghost { background: transparent; }
+    .btn.primary { border-color: transparent; background: linear-gradient(135deg, #7c3aed, #22d3ee); color: white; }
+    .btn.primary:disabled { filter: grayscale(0.6) brightness(0.8); cursor: not-allowed; }
+
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .pill { border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700; border: 1px solid var(--card-border); background: rgba(255,255,255,0.08); cursor: pointer; }
+    .pill.active { background: white; color: #0f172a; box-shadow: 0 2px 0 rgba(0,0,0,0.1); }
+
+    input[type="number"] { width: 100%; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.1); color: var(--text); border: 1px solid var(--card-border); }
+
+    .results { min-height: 220px; position: relative; }
+    .dice-rail { display: flex; flex-wrap: wrap; gap: 12px; }
+    .die { width: 64px; border-radius: 16px; border: 1px solid var(--card-border); padding: 10px; text-align: center; background: rgba(255,255,255,0.08); box-shadow: 0 10px 20px rgba(0,0,0,0.2); backdrop-filter: blur(6px); }
+    .die.good { border-color: rgba(52,211,153,0.8); background: rgba(52,211,153,0.1); }
+    .die.bad { border-color: rgba(251,113,133,0.8); background: rgba(251,113,133,0.1); }
+    .die .label { font-size: 10px; opacity: 0.7; letter-spacing: 0.06em; text-transform: uppercase; }
+    .die .value { font-weight: 900; font-size: 24px; transform: translateZ(0); animation: pop 180ms ease-out; }
+    @keyframes pop { from { transform: scale(0.8); opacity: 0;} to { transform: scale(1); opacity: 1;} }
+
+    .history { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 900px) { .history { grid-template-columns: 1fr 1fr; } }
+    .history-item { border: 1px solid var(--card-border); border-radius: 14px; background: rgba(255,255,255,0.06); padding: 12px; }
+    .history-item .meta { display: flex; align-items: center; justify-content: space-between; font-size: 12px; opacity: 0.75; margin-bottom: 4px; }
+    .history-item .dice-rail { margin-top: 6px; }
+    .total { text-align: right; font-size: 22px; font-weight: 900; margin-top: 8px; }
+    .muted { opacity: 0.8; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="badge">🎲</div>
+        <h1>RPG Dice Roller</h1>
+      </div>
+      <div class="muted">Pretty. Animated. Suspenseful.</div>
+    </header>
+
+    <div class="grid">
+      <!-- Controls -->
+      <section class="card">
+        <h2>Build Your Pool</h2>
+        <div class="content">
+          <div class="dice-grid" id="dice-grid"></div>
+
+          <div class="row" style="margin-top:12px; gap:12px; align-items: stretch;">
+            <div style="flex:1;" class="card">
+              <h2>Modifier</h2>
+              <div class="content">
+                <input type="number" id="modifier" value="0" />
+                <div class="muted" style="margin-top:6px; font-size:12px;">applies to total</div>
+              </div>
+            </div>
+            <div style="flex:1;" class="card">
+              <h2>Advantage / Disadvantage</h2>
+              <div class="content row" style="justify-content: space-between;">
+                <button class="pill" data-adv="none">None</button>
+                <button class="pill" data-adv="advantage">Advantage</button>
+                <button class="pill" data-adv="disadvantage">Disadvantage</button>
+              </div>
+              <div class="muted" style="padding: 0 16px 12px; font-size:12px;">affects d20 only</div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:8px;">
+            <div class="muted">Pool: <strong id="pool-label">No dice</strong></div>
+            <div class="row" style="gap:8px;">
+              <button class="btn primary" id="roll-btn">Roll!</button>
+              <button class="btn ghost" id="clear-btn">Clear</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Results -->
+      <section class="card">
+        <h2>Results</h2>
+        <div class="content">
+          <div class="row muted" style="justify-content: space-between; margin-bottom: 8px;">
+            <div id="status">Pick your dice and hit Roll!</div>
+            <div>Modifier: <span id="mod-display">0</span></div>
+          </div>
+          <div class="dice-rail" id="results"></div>
+          <div class="total" id="total"></div>
+        </div>
+      </section>
+
+      <!-- History -->
+      <section class="card" style="grid-column: 1 / -1;">
+        <h2>Roll History</h2>
+        <div class="content">
+          <div class="history" id="history"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // --- State ---
+    const DIE_DEFS = [
+      { key: 'd4', sides: 4 },
+      { key: 'd6', sides: 6 },
+      { key: 'd8', sides: 8 },
+      { key: 'd10', sides: 10 },
+      { key: 'd12', sides: 12 },
+      { key: 'd20', sides: 20 },
+      { key: 'd100', sides: 100 },
+    ];
+
+    const state = {
+      counts: Object.fromEntries(DIE_DEFS.map(d => [d.key, 0])),
+      modifier: 0,
+      advMode: 'none', // 'none' | 'advantage' | 'disadvantage'
+      rolling: false,
+      history: [],
+    };
+
+    // --- Helpers ---
+    const el = sel => document.querySelector(sel);
+    const create = (tag, cls) => { const n = document.createElement(tag); if (cls) n.className = cls; return n; };
+    const rollDie = sides => Math.floor(Math.random() * sides) + 1;
+    const formatPool = pool => Object.entries(pool.counts).filter(([,n])=>n>0).map(([k,n])=>`${n}${k}`).join(' + ') || 'No dice';
+
+    function applyAdvantageIfNeeded(result, advPairs) {
+      if (result.advMode === 'none' || advPairs.length === 0) return result;
+      const toKeep = new Set();
+      for (const { a, b } of advPairs) {
+        const av = result.dice.find(d => d.id === a.id)?.value || 0;
+        const bv = result.dice.find(d => d.id === b.id)?.value || 0;
+        toKeep.add(result.advMode === 'advantage' ? (av >= bv ? a.id : b.id) : (av <= bv ? a.id : b.id));
+      }
+      result.dice = result.dice.filter(d => d.key !== 'd20' || toKeep.has(d.id));
+      return result;
+    }
+
+    // --- UI setup ---
+    const diceGrid = el('#dice-grid');
+    DIE_DEFS.forEach(({key, sides}) => {
+      const wrap = create('div', 'die-picker');
+      const top = create('div', 'row');
+      const name = create('div', 'name'); name.textContent = key.toUpperCase();
+      const sidesEl = create('div', 'sides'); sidesEl.textContent = sides + ' sides';
+      top.appendChild(name); top.appendChild(sidesEl);
+
+      const controls = create('div', 'controls');
+      const minus = create('button', 'btn icon ghost'); minus.textContent = '−';
+      const count = create('div'); count.style.fontWeight = '900'; count.style.fontSize = '22px'; count.textContent = '0';
+      const plus = create('button', 'btn icon'); plus.textContent = '+';
+      controls.append(minus, count, plus);
+
+      minus.addEventListener('click', () => { state.counts[key] = Math.max(0, state.counts[key]-1); count.textContent = state.counts[key]; renderPool(); });
+      plus.addEventListener('click', () => { state.counts[key] = (state.counts[key]||0)+1; count.textContent = state.counts[key]; renderPool(); });
+
+      wrap.append(top, controls);
+      diceGrid.appendChild(wrap);
+    });
+
+    // Advantage pills
+    const pills = Array.from(document.querySelectorAll('[data-adv]'));
+    function setAdvMode(mode){ state.advMode = mode; pills.forEach(p=>p.classList.toggle('active', p.dataset.adv===mode)); }
+    setAdvMode('none');
+    pills.forEach(p=> p.addEventListener('click', ()=> setAdvMode(p.dataset.adv)));
+
+    // Modifier input
+    const modInput = el('#modifier');
+    const modDisplay = el('#mod-display');
+    modInput.addEventListener('input', () => { state.modifier = Number(modInput.value || 0); modDisplay.textContent = state.modifier >= 0 ? '+'+state.modifier : state.modifier; });
+
+    // Pool label
+    function renderPool(){ el('#pool-label').textContent = formatPool(state); }
+
+    // Clear
+    el('#clear-btn').addEventListener('click', () => {
+      for (const k in state.counts) state.counts[k] = 0;
+      document.querySelectorAll('.die-picker .controls div').forEach((d)=> d.textContent = '0');
+      state.modifier = 0; modInput.value = 0; modDisplay.textContent = '0';
+      setAdvMode('none');
+      renderPool();
+      el('#results').innerHTML = ''; el('#total').textContent = ''; el('#status').textContent = 'Pick your dice and hit Roll!';
+    });
+
+    // Roll
+    el('#roll-btn').addEventListener('click', () => {
+      if (state.rolling) return;
+      const totalDice = Object.values(state.counts).reduce((a,b)=>a+b,0);
+      if (totalDice === 0) return;
+      state.rolling = true; el('#status').textContent = 'Rolling…';
+
+      const diceList = [];
+      DIE_DEFS.forEach(({key, sides}) => {
+        for(let i=0; i<(state.counts[key]||0); i++) diceList.push({ id: `${key}-${i}-${Date.now()}`, key, sides });
+      });
+
+      const advMode = state.advMode;
+      const advPairs = [];
+      if ((advMode === 'advantage' || advMode === 'disadvantage') && state.counts.d20 > 0) {
+        const newDiceList = [];
+        let idx = 0;
+        for (const d of diceList) {
+          if (d.key === 'd20') {
+            const a = { id: `${d.id}-A`, key: d.key, sides: d.sides };
+            const b = { id: `${d.id}-B`, key: d.key, sides: d.sides };
+            advPairs.push({ pairId: `pair-${idx++}`, a, b });
+            newDiceList.push(a, b);
+          } else newDiceList.push(d);
+        }
+        diceList.splice(0, diceList.length, ...newDiceList);
+      }
+
+      const results = { dice: diceList.map(d=>({...d, value: null})), modifier: state.modifier, advMode };
+      const revealMap = {};
+      const rail = el('#results'); rail.innerHTML = '';
+
+      const baseDelay = 180; // ms
+      const startDelay = 600;
+
+      results.dice.forEach((die, i) => {
+        const node = create('div', 'die');
+        const label = create('div', 'label'); label.textContent = die.key;
+        const val = create('div', 'value'); val.textContent = rollDie(die.sides);
+        node.append(label, val);
+        rail.appendChild(node);
+
+        const spinner = setInterval(()=>{ if(!revealMap[die.id]) val.textContent = rollDie(die.sides); }, 70);
+        const delay = startDelay + i*baseDelay;
+        setTimeout(()=>{
+          const finalVal = rollDie(die.sides);
+          results.dice = results.dice.map(x=> x.id===die.id ? {...x, value: finalVal} : x);
+          revealMap[die.id] = true;
+          clearInterval(spinner);
+          val.textContent = finalVal;
+          if (die.key === 'd20') {
+            node.classList.toggle('good', finalVal === 20);
+            node.classList.toggle('bad', finalVal === 1);
+          }
+        }, delay);
+      });
+
+      // Wrap up after all reveals
+      const totalDelay = startDelay + results.dice.length*baseDelay + 1000;
+      setTimeout(()=>{
+        state.rolling = false;
+        const withAdv = applyAdvantageIfNeeded(results, advPairs);
+        const sum = withAdv.dice.reduce((acc,d)=>acc + (d.value||0), 0);
+        const total = sum + (withAdv.modifier||0);
+        el('#status').textContent = 'Revealed:';
+        el('#total').textContent = 'Total: ' + total + (state.modifier ? ` (${sum} ${state.modifier>=0?'+':''}${state.modifier})` : '');
+
+        // History entry
+        const entry = {
+          id: 'roll-'+Date.now(),
+          when: new Date().toLocaleString(),
+          pool: JSON.parse(JSON.stringify({ counts: state.counts })),
+          results: withAdv,
+          sum, total
+        };
+        state.history.unshift(entry); state.history = state.history.slice(0, 30);
+        renderHistory();
+      }, totalDelay);
+    });
+
+    function renderHistory(){
+      const list = el('#history');
+      list.innerHTML = '';
+      if (state.history.length === 0) {
+        const p = create('p', 'muted'); p.textContent = 'No rolls yet. Your past rolls will appear here.'; list.appendChild(p); return;
+      }
+      state.history.forEach(h=>{
+        const card = create('div', 'history-item');
+        const meta = create('div', 'meta');
+        const when = create('span'); when.textContent = h.when;
+        const pool = create('span'); pool.textContent = formatPool({counts: state.counts});
+        meta.append(when, pool);
+        const rail = create('div', 'dice-rail');
+        h.results.dice.forEach(d=>{
+          const node = create('div', 'die');
+          if (d.key==='d20' && d.value===20) node.classList.add('good');
+          if (d.key==='d20' && d.value===1) node.classList.add('bad');
+          const label = create('div', 'label'); label.textContent = d.key;
+          const val = create('div', 'value'); val.textContent = d.value;
+          node.append(label, val); rail.appendChild(node);
+        });
+        const total = create('div', 'total'); total.textContent = 'Total: ' + h.total + (state.modifier ? ` (${h.sum} ${state.modifier>=0?'+':''}${state.modifier})` : '');
+        card.append(meta, rail, total); list.appendChild(card);
+      });
+    }
+
+    // initial
+    renderPool();
+  </script>
+</body>
+</html>
